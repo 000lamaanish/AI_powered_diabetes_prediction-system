@@ -1,37 +1,33 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 import joblib
 import os
 import matplotlib.pyplot as plt
-import pandas as pd
 
-# Page config
+# -----------------------
+# PAGE CONFIG
+# -----------------------
 st.set_page_config(page_title="Diabetes Risk Predictor", layout="wide")
 
-# -----------------------
-# MODEL PATH (FIXED)
-# -----------------------
-model_path = os.path.join("diabetes_app", "app", "model.pkl")
-
-if not os.path.exists(model_path):
-    st.error(f"❌ Model not found at {model_path}")
-    st.stop()
-
-model = joblib.load(model_path)
-
-st.caption("App is running in Streamlit Cloud environment")
-
-if not os.path.exists(model_path):
-    st.error("❌ Model not found. Run training first.")
-    st.stop()
-
-model = joblib.load(model_path)
-
-# -----------------------
-# HEADER
-# -----------------------
 st.title("🧪 Diabetes Risk Prediction System")
 st.markdown("AI-powered early screening tool for diabetes risk assessment")
+
+# -----------------------
+# SAFE MODEL LOADING
+# -----------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(BASE_DIR, "model.pkl")
+
+if not os.path.exists(model_path):
+    st.error(f"❌ Model not found at: {model_path}")
+    st.stop()
+
+try:
+    model = joblib.load(model_path)
+except Exception as e:
+    st.error(f"❌ Error loading model: {e}")
+    st.stop()
 
 # -----------------------
 # SIDEBAR INPUT
@@ -48,85 +44,63 @@ dpf = st.sidebar.number_input("Diabetes Pedigree Function", 0.0, 3.0, 0.5)
 age = st.sidebar.number_input("Age", 1, 100, 30)
 
 # -----------------------
-# MAIN AREA
-# -----------------------
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("📊 Patient Summary")
-    st.write(f"Age: {age}")
-    st.write(f"Glucose: {glucose}")
-    st.write(f"BMI: {bmi}")
-
-with col2:
-    st.subheader("🧠 Model Prediction")
-
-# -----------------------
-# PREDICTION BUTTON
+# PREDICTION
 # -----------------------
 if st.button("🔍 Predict Risk"):
 
-    data = np.array([[pregnancies, glucose, bp, skin, insulin, bmi, dpf, age]])
-    prob = model.predict_proba(data)[0][1]
+    try:
+        # MUST MATCH TRAINING FEATURES EXACTLY
+        input_data = pd.DataFrame([[
+            pregnancies,
+            glucose,
+            bp,
+            skin,
+            insulin,
+            bmi,
+            dpf,
+            age
+        ]], columns=[
+            'Pregnancies',
+            'Glucose',
+            'BloodPressure',
+            'SkinThickness',
+            'Insulin',
+            'BMI',
+            'DiabetesPedigreeFunction',
+            'Age'
+        ])
 
-    st.subheader(f"🧪 Diabetes Probability: {prob:.2f}")
+        prob = model.predict_proba(input_data)[0][1]
 
-    # -----------------------
-    # 📊 PROBABILITY BAR
-    # -----------------------
-    fig, ax = plt.subplots()
-    ax.bar(["No Diabetes", "Diabetes"], [1-prob, prob])
-    ax.set_ylabel("Probability")
-    st.pyplot(fig)
+        st.subheader(f"🧪 Diabetes Probability: {prob:.2f}")
 
-    # Progress bar
-    st.progress(int(prob * 100))
+        # -----------------------
+        # VISUALIZATION
+        # -----------------------
+        fig, ax = plt.subplots()
+        ax.bar(["No Diabetes", "Diabetes"], [1 - prob, prob])
+        ax.set_ylabel("Probability")
+        st.pyplot(fig)
 
-    # -----------------------
-    # 🧠 FEATURE IMPORTANCE
-    # -----------------------
-    st.subheader("🧠 Feature Importance")
+        st.progress(int(prob * 100))
 
-    # Get feature importance from model inside pipeline
-    rf_model = model.named_steps["model"]
+        # -----------------------
+        # RISK LEVEL
+        # -----------------------
+        if prob < 0.3:
+            st.success("🟢 Low Risk")
+            st.info("Maintain healthy lifestyle.")
 
-    features = [
-        'Pregnancies',
-        'Glucose',
-        'BloodPressure',
-        'SkinThickness',
-        'Insulin',
-        'BMI',
-        'DiabetesPedigreeFunction',
-        'Age'
-    ]
+        elif prob < 0.6:
+            st.warning("🟡 Medium Risk")
+            st.info("Consult doctor if needed.")
 
-    importance = rf_model.feature_importances_
+        else:
+            st.error("🔴 High Risk")
+            st.info("Seek medical advice.")
 
-    df_imp = pd.DataFrame({
-        "Feature": features,
-        "Importance": importance
-    }).sort_values(by="Importance", ascending=False)
-
-    fig2, ax2 = plt.subplots()
-    ax2.barh(df_imp["Feature"], df_imp["Importance"])
-    ax2.invert_yaxis()
-    st.pyplot(fig2)
-
-    # -----------------------
-    # Risk classification
-    # -----------------------
-    if prob < 0.3:
-        st.success("🟢 Low Risk")
-        st.info("Maintain a healthy lifestyle and regular checkups.")
-        
-    elif prob < 0.6:
-        st.warning("🟡 Medium Risk")
-        st.info("Consider consulting a doctor and improving diet/exercise.")
-        
-    else:
-        st.error("🔴 High Risk")
-        st.info("Medical attention recommended. Please consult a professional.")
+    except Exception as e:
+        st.error(f"❌ Prediction error: {e}")
 
 # -----------------------
 # FOOTER
