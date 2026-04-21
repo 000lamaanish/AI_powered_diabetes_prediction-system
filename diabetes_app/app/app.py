@@ -10,7 +10,13 @@ import pandas as pd
 st.set_page_config(page_title="Diabetes Risk Predictor", layout="wide")
 
 # Load model
-model_path = "model.pkl"
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(BASE_DIR, "model.pkl")
+
+st.write("Current directory:", os.getcwd())
+st.write("Files here:", os.listdir())
 
 if not os.path.exists(model_path):
     st.error("❌ Model not found. Run training first.")
