@@ -1,4 +1,3 @@
-
 import streamlit as st
 import numpy as np
 import joblib
@@ -9,14 +8,18 @@ import pandas as pd
 # Page config
 st.set_page_config(page_title="Diabetes Risk Predictor", layout="wide")
 
-# Load model
-import os
+# -----------------------
+# MODEL PATH (FIXED)
+# -----------------------
+model_path = os.path.join("diabetes_app", "app", "model.pkl")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-model_path = os.path.join(BASE_DIR, "model.pkl")
+if not os.path.exists(model_path):
+    st.error(f"❌ Model not found at {model_path}")
+    st.stop()
 
-st.write("Current directory:", os.getcwd())
-st.write("Files here:", os.listdir())
+model = joblib.load(model_path)
+
+st.caption("App is running in Streamlit Cloud environment")
 
 if not os.path.exists(model_path):
     st.error("❌ Model not found. Run training first.")
