@@ -4,7 +4,8 @@ import pandas as pd
 import joblib
 import os
 import matplotlib.pyplot as plt
-
+import sklearn
+st.write("SKLEARN VERSION:", sklearn.__version__)
 # -----------------------
 # PAGE CONFIG
 # -----------------------
